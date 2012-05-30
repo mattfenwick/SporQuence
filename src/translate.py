@@ -41,7 +41,7 @@ def flipCode(r2cs):
 codonToResidue = flipCode(residueToCodons)
 
 
-def translateCodons(codons):
+def codonsToResidues(codons):
     '''[Codon] -> [Residue]'''
     return [codonToResidue[c.bases] for c in codons]
 
@@ -82,8 +82,8 @@ class C2RTest(unittest.TestCase):
         for b in ''.join(codonToResidue.keys()):
             self.assertTrue(b in "ACGT", "base %s" % str(b))
 
-    def testTranslateCodons(self):
-        rs = translateCodons([model.Codon(seq) for seq in ['ACG', 'ATG', 'TTA']])
+    def testCodonsToResidues(self):
+        rs = codonsToResidues([model.Codon(seq) for seq in ['ACG', 'ATG', 'TTA']])
         self.assertEqual(len(rs), 3)
         self.assertEqual(rs[1], 'M')
 

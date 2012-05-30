@@ -1,8 +1,6 @@
 import unittest
-import codons as cn
 import bacillussubtilis168 as bs
-import kd
-import translate as tr
+import analysismodel as am
 
 
 ##################### junk functions (junc-tions)
@@ -17,22 +15,16 @@ def countBig(kdResults):
 
 
 # codons of bacillus subtilis
-codons = cn.getCodons(bs.sequence)
+seq = am.Sequence(bs.sequence)
 
 # [ORF] :: open reading frames
-orfs = cn.getOrfs(codons)
+orfs = seq.getOrfs()
 
 # [ORF] :: open reading frames between 50 and 80 codons long
-smallOrfs = filter(lambda o: len(o.codons) >= 50 and len(o.codons) <= 80, orfs)
+smallOrfs = filter(lambda o: len(o.getCodons()) >= 50 and len(o.getCodons()) <= 80, orfs)
 
-# [[Residue]] :: translated small ORFs
-orfResidues = map(lambda orf: tr.translateCodons(orf.codons), smallOrfs)
-
-# [[Float]] :: Kyte-Doolittles of translated small ORFs
-orfKds = map(lambda o: kd.kyteDoolittle(o, 9), orfResidues)
-
-# [[Float]] :: just the Kyte-Doolittles with a value > 2
-phobicKds = filter(kdFilter, orfKds)
+# [[Float]] :: just the Kyte-Doolittles with at least one value > 2
+phobicKds = filter(lambda o: kdFilter(o.getKyteDool(9)), smallOrfs)
 
 ############################
 
@@ -42,7 +34,7 @@ class GlueTest(unittest.TestCase):
         pass
 
     def testCodonsLength(self):
-        self.assertEqual(1405202, len(codons))
+        self.assertEqual(1405202, len(seq.getCodons()))
 
     def testOrfsLength(self):
         self.assertEqual(27522, len(orfs))

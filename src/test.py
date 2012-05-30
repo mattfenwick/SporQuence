@@ -6,6 +6,8 @@ import bacillussubtilis168 as bs
 import glue
 import kd
 import translate as tr
+import analysismodel as am
+
 
 
 def getSuite(mod):
@@ -14,7 +16,7 @@ def getSuite(mod):
 
 
 def runTests():
-    testModules = [codons, glue, kd, tr, bs]
+    testModules = [codons, kd, tr, bs, am] # glue, 
     mySuite = unittest.TestSuite([getSuite(module) for module in testModules])
     unittest.TextTestRunner(verbosity=2).run(mySuite)
 #    unittest.main()
