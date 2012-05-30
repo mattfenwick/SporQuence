@@ -5,7 +5,7 @@ import unittest
 
 
 def getCodons(bases):
-    '''[Base] -> [Codons]'''
+    '''[Base] -> [Codon]'''
     if len(bases) % 3 != 0:
         raise ValueError("number of bases must be divisible by 3")
 
@@ -24,7 +24,7 @@ STARTS = ["GTG", "ATG", "TTG"]
 STOPS = ["TAA", "TAG", "TGA"]
 
 def getOrfs(codons):
-    '''[Codons] -> [ORFs]'''
+    '''[Codon] -> [ORF]'''
     inORF = False
     orfs = []
     ix = 0
@@ -43,7 +43,7 @@ def getOrfs(codons):
 
 ############################
 
-class AnalyzeTest(unittest.TestCase):
+class CodonsTest(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -95,4 +95,4 @@ class AnalyzeTest(unittest.TestCase):
         self.assertEqual(None, orfs[0].stop)
     
 
-testClasses = [AnalyzeTest]
+testClasses = [CodonsTest]

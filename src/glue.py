@@ -1,5 +1,5 @@
 import unittest
-import analyze as an
+import codons as cn
 import bacillussubtilis168 as bs
 import kd
 import translate as tr
@@ -17,10 +17,10 @@ def countBig(kdResults):
 
 
 # codons of bacillus subtilis
-codons = an.getCodons(bs.sequence)
+codons = cn.getCodons(bs.sequence)
 
 # [ORF] :: open reading frames
-orfs = an.getOrfs(codons)
+orfs = cn.getOrfs(codons)
 
 # [ORF] :: open reading frames between 50 and 80 codons long
 smallOrfs = filter(lambda o: len(o.codons) >= 50 and len(o.codons) <= 80, orfs)
