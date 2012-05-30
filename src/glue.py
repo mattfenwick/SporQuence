@@ -2,6 +2,7 @@ import unittest
 import analyze as an
 import bacillussubtilis168 as bs
 import kd
+import translate as tr
 
 
 ##################### junk functions (junc-tions)
@@ -25,7 +26,7 @@ orfs = an.getOrfs(codons)
 smallOrfs = filter(lambda o: len(o.codons) >= 50 and len(o.codons) <= 80, orfs)
 
 # [[Residue]] :: translated small ORFs
-orfResidues = map(lambda orf: kd.translateCodons(orf.codons), smallOrfs)
+orfResidues = map(lambda orf: tr.translateCodons(orf.codons), smallOrfs)
 
 # [[Float]] :: Kyte-Doolittles of translated small ORFs
 orfKds = map(lambda o: kd.kyteDoolittle(o, 9), orfResidues)
@@ -51,6 +52,4 @@ class GlueTest(unittest.TestCase):
     
 
 
-def getSuite():
-    suite1 = unittest.TestLoader().loadTestsFromTestCase(GlueTest)
-    return unittest.TestSuite([suite1])
+testClasses = [GlueTest]

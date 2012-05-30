@@ -95,7 +95,4 @@ class AnalyzeTest(unittest.TestCase):
         self.assertEqual(None, orfs[0].stop)
     
 
-
-def getSuite():
-    suite1 = unittest.TestLoader().loadTestsFromTestCase(AnalyzeTest)
-    return unittest.TestSuite([suite1])
+testClasses = [AnalyzeTest]
