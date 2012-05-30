@@ -23,8 +23,8 @@ orfs = seq.getOrfs()
 # [ORF] :: open reading frames between 50 and 80 codons long
 smallOrfs = filter(lambda o: len(o.getCodons()) >= 50 and len(o.getCodons()) <= 80, orfs)
 
-# [[Float]] :: just the Kyte-Doolittles with at least one value > 2
-phobicKds = filter(lambda o: kdFilter(o.getKyteDool(9)), smallOrfs)
+# [ORF] :: just those where Kyte-Doolittles has at least one value > 2
+phobicOrfs = filter(lambda o: kdFilter(o.getKyteDool(9)), smallOrfs)
 
 ############################
 

@@ -38,6 +38,9 @@ class ORF(object):
 
 ######################
 
+    def getResidues(self):
+        return translate.codonsToResidues(self.getCodons())
+
     def getCodons(self):
         if self._codons is None:
             start, stop = self._startIndex, self._stopIndex
@@ -52,7 +55,7 @@ class ORF(object):
 
     def getKyteDool(self, windowRadius):
         if not self._kyteDool.has_key(windowRadius):
-            residues = translate.codonsToResidues(self.getCodons())
+            residues = self.getResidues()
             self._kyteDool[windowRadius] = kd.kyteDoolittle(residues, windowRadius)
         return self._kyteDool[windowRadius]
         
