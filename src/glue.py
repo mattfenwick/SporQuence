@@ -1,14 +1,37 @@
 import unittest
 import analyze as an
 import bacillussubtilis168 as bs
+import kd
 
 
+##################### junk functions (junc-tions)
+
+def kdFilter(kdResults):
+    return len(filter(lambda x: x > 2, kdResults)) > 0
+
+def countBig(kdResults):
+    return len(filter(lambda x: x > 2, kdResults))
+
+######################
+
+
+# codons of bacillus subtilis
 codons = an.getCodons(bs.sequence)
 
+# [ORF] :: open reading frames
 orfs = an.getOrfs(codons)
 
+# [ORF] :: open reading frames between 50 and 80 codons long
 smallOrfs = filter(lambda o: len(o.codons) >= 50 and len(o.codons) <= 80, orfs)
 
+# [[Residue]] :: translated small ORFs
+orfResidues = map(lambda orf: kd.translateCodons(orf.codons), smallOrfs)
+
+# [[Float]] :: Kyte-Doolittles of translated small ORFs
+orfKds = map(lambda o: kd.kyteDoolittle(o, 9), orfResidues)
+
+# [[Float]] :: just the Kyte-Doolittles with a value > 2
+phobicKds = filter(kdFilter, orfKds)
 
 ############################
 
