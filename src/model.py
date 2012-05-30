@@ -1,10 +1,11 @@
-
+import yaml
 
 
 class Codon(object):
 
     def __init__(self, bases):
-        assert len(bases) == 3, "codon needs 3 bases"
+        if len(bases) != 3:
+            raise ValueError("codon needs 3 bases")
         self.bases = bases
 
     def toJSON(self):
@@ -13,29 +14,7 @@ class Codon(object):
         }
 
     def __repr__(self):
-        return str(self.toJSON())
-
-
-class CodonSequence(object):
-
-    def __init__(self, bases):
-        assert (len(bases) % 3) == 0, "sequence length must be divisible by 3"
-
-        self.codons = []
-        x = 0
-        while x < len(bases):
-            self.codons.append(Codon(bases[x:x+3]))
-            x += 3
-
-        assert len(self.codons) == len(bases) / 3
-
-    def toJSON(self):
-        return {
-            'bases': self.bases
-        }
-
-    def __repr__(self):
-        return str(self.toJSON())
+        return yaml.dump(self.toJSON())
 
 
 class ORF(object):
@@ -48,9 +27,9 @@ class ORF(object):
     def toJSON(self):
         return {
             'index': self.index,
-            'codons': self.codons,
-            'stop': self.stop
+            'codons': [c.toJSON() for c in self.codons],
+            'stop': self.stop.toJSON()
         }
 
     def __repr__(self):
-        return str(self.toJSON())
+        return yaml.dump(self.toJSON())
