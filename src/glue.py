@@ -1,6 +1,7 @@
 import unittest
 import bacillussubtilis168 as bs
 import analysismodel as am
+import yaml
 
 
 ##################### junk functions (junc-tions)
@@ -10,6 +11,19 @@ def kdFilter(kdResults):
 
 def countBig(kdResults):
     return len(filter(lambda x: x > 2, kdResults))
+
+def peakFilter(orf):
+    kdPeaks = orf.getKDPeaks(4, 4)
+    highPeaks = filter(lambda p: p['height'] >= 2, kdPeaks)
+    return len(highPeaks) == 2
+
+def dumpOrfAndContext(orf):
+    return {
+        'start': orf.getStartIndex() * 3 + 1, # 3 for (codon -> base), 1 to correct for 0-indexing
+        'upstream': ''.join(map(lambda c: c.bases, orf.getUpstreamCodons(34))),
+        'downstream': ''.join(map(lambda c: c.bases, orf.getDownstreamCodons(34))),
+        'sequence': ''.join(map(lambda c: c.bases, orf.getCodons()))
+    }
 
 ######################
 
@@ -25,6 +39,12 @@ smallOrfs = filter(lambda o: len(o.getCodons()) >= 50 and len(o.getCodons()) <= 
 
 # [ORF] :: just those where Kyte-Doolittles has at least one value > 2
 phobicOrfs = filter(lambda o: kdFilter(o.getKyteDool(9)), smallOrfs)
+
+orfsTwoPeaks = filter(peakFilter, phobicOrfs)
+
+print yaml.dump(map(dumpOrfAndContext, orfsTwoPeaks))
+
+#transMembraneCounts = map(lambda ps: len(filter(lambda y: y['height'] >= 2, ps)), pks)
 
 ############################
 

@@ -1,6 +1,8 @@
 import kd
 import codons as cn
 import translate
+import peaks
+
 import unittest
 import yaml
 
@@ -53,12 +55,17 @@ class ORF(object):
     def getUpstreamCodons(self, n):
         return self._sequence.getCodons()[self._startIndex - n : self._startIndex]
 
+    def getDownstreamCodons(self, n):
+        return self._sequence.getCodons()[self._stopIndex : self._stopIndex + n]
+
     def getKyteDool(self, windowRadius):
         if not self._kyteDool.has_key(windowRadius):
             residues = self.getResidues()
             self._kyteDool[windowRadius] = kd.kyteDoolittle(residues, windowRadius)
         return self._kyteDool[windowRadius]
-        
+
+    def getKDPeaks(self, kdRadius, peakRadius):
+        return peaks.get1DPeaks(self.getKyteDool(kdRadius), peakRadius)
 
 
 class Sequence(object):
@@ -97,9 +104,15 @@ class OrfTest(unittest.TestCase):
         orf = ORF(4, 7, Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA'))
         self.assertEqual('GGC', orf.getUpstreamCodons(2)[0].bases)
 
+    def testGetDownstreamCodons(self):
+        self.assertTrue(False)
+
     def testGetStopCodon(self):
         orf = ORF(4, 7, Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA'))
         self.assertEqual('GCA', orf.getStopCodon().bases)
+
+    def testGetPeaks(self):
+        self.assertTrue(False)
 
 
 class SequenceTest(unittest.TestCase):

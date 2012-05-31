@@ -16,7 +16,7 @@ def getSuite(mod):
 
 
 def runTests():
-    testModules = [codons, kd, tr, bs, am] # glue, 
+    testModules = [codons, kd, tr, bs, am] # glue, model]
     mySuite = unittest.TestSuite([getSuite(module) for module in testModules])
     unittest.TextTestRunner(verbosity=2).run(mySuite)
 #    unittest.main()
