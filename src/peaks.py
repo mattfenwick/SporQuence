@@ -1,7 +1,7 @@
 import unittest
 
 
-def get1DPeaks(data, radius):
+def find1DPeaks(data, radius):
     '''[Float] -> Int -> [Peak]'''
     peaks = []
     i = radius
@@ -13,3 +13,19 @@ def get1DPeaks(data, radius):
             i += radius     # so that nearby points of equal height don't get counted twice ... ???
         i += 1
     return peaks
+
+
+###########################################################################
+
+
+class PeaksTest(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def testNoPeaks(self):
+        self.assertEqual(0, len(find1DPeaks(range(20), 5)))
+    
+
+
+testClasses = [PeaksTest]
