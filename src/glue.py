@@ -29,20 +29,24 @@ def dumpOrfAndContext(orf):
 
 
 # codons of bacillus subtilis
-seq = am.Sequence(bs.sequence)
+seq, rev = am.Sequence(bs.sequence), am.Sequence(bs.reverseComplement)
 
 # [ORF] :: open reading frames
-orfs = seq.getOrfs()
+orfs, revOrfs = seq.getOrfs(), rev.getOrfs()
 
 # [ORF] :: open reading frames between 50 and 80 codons long
 smallOrfs = filter(lambda o: len(o.getCodons()) >= 50 and len(o.getCodons()) <= 80, orfs)
+smallRevOrfs = filter(lambda o: len(o.getCodons()) >= 50 and len(o.getCodons()) <= 80, revOrfs)
 
 # [ORF] :: just those where Kyte-Doolittles has at least one value > 2
 phobicOrfs = filter(lambda o: kdFilter(o.getKyteDool(9)), smallOrfs)
+phobicRevOrfs = filter(lambda o: kdFilter(o.getKyteDool(9)), smallRevOrfs)
 
 orfsTwoPeaks = filter(peakFilter, phobicOrfs)
+revOrfsTwoPeaks = filter(peakFilter, phobicRevOrfs)
 
-print yaml.dump(map(dumpOrfAndContext, orfsTwoPeaks))
+dumped = yaml.dump(map(dumpOrfAndContext, orfsTwoPeaks))
+revDumped = yaml.dump(map(dumpOrfAndContext, revOrfsTwoPeaks))
 
 #transMembraneCounts = map(lambda ps: len(filter(lambda y: y['height'] >= 2, ps)), pks)
 
