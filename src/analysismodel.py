@@ -25,9 +25,12 @@ class ORF(object):
 
     def toJSON(self):
         return {
-            'startIndex': self.getStartIndex(),
-            'codons': [c.toJSON() for c in self.getCodons()],
-            'stopIndex': self.getStopIndex()
+            'start'       : self.getStartIndex(),
+            'sequence'    : self.getBases(),
+            'stop'        : self.getStopIndex(),
+            'translation' : self.getResidues(),
+            'upstream'    : self.getUpstreamBases(100),
+            'downstream'  : self.getDownstreamBases(100)
         }
 
     def __repr__(self):
@@ -68,7 +71,7 @@ class ORF(object):
         return sq.makeCodons(self.getBases())
 
     def getResidues(self):
-        return translate.codonsToResidues(self.getCodons())
+        return ''.join(translate.codonsToResidues(self.getCodons()))
 
     def getKyteDool(self, windowRadius):
         if not self._kyteDool.has_key(windowRadius):
@@ -109,29 +112,67 @@ class Sequence(object):
 
 class SequenceMuncher(object):
 
-    def __init__(self, sequence):
+    def __init__(self, sequence, low = 50, high = 80, kdRadius = 4, peakRadius = 4, peakHeightCutoff = 2.0, upstreamSequence = 'GG'):
         self._forward = sequence
         self._reverse = Sequence(sq.reverseComplement(sequence.getBases()))
-        self._forwardOrfs = self._forward.getOrfs()
-        self._reverseOrfs = self._reverse.getOrfs()
+
+        # configuration variables
+        self.low, self.high = 50, 80
+        self.kdRadius, self.peakRadius = kdRadius, peakRadius
+        self.peakHeightCutoff, self.upstreamSequence = peakHeightCutoff, upstreamSequence
+
+        self._orfs, self._smallOrfs = None, None
 
     def getOrfs(self):
+        if self._orfs is None:
+            self._orfs = {
+            'forward': self._forward.getOrfs(),
+            'reverse': self._reverse.getOrfs()
+        }
+        return self._orfs
+
+    def getSmallOrfs(self):
+        if self._smallOrfs is None:
+            def filterer(orf):
+                cs = len(orf.getCodons())
+                return self.low <= cs <= self.high
+            orfs = self.getOrfs()
+            self._smallOrfs = {
+                'forward': filter(filterer, orfs['forward']),
+                'reverse': filter(filterer, orfs['reverse'])
+            }
+        return self._smallOrfs
+
+    def getPhobicOrfs(self):
+        def kdFilter(orf):
+            kdResults = orf.getKyteDool(self.kdRadius)
+            return len(filter(lambda x: x > self.peakHeightCutoff, kdResults)) > 0
+        orfs = self.getSmallOrfs()
         return {
-            'forward': self._forwardOrfs,
-            'reverse': self._reverseOrfs
+            'forward': filter(kdFilter, orfs['forward']),
+            'reverse': filter(kdFilter, orfs['reverse'])
         }
 
-    def getSmallOrfs(self, low, high):
-        def filterer(orf):
-            cs = len(orf.codons)
-            return low <= cs <= high
-        orfs = self.getOrfs()
+    def getTwoPeakOrfs(self):
+        def peakFilter(orf):
+            kdPeaks = orf.getKDPeaks(self.kdRadius, self.peakRadius)
+            highPeaks = filter(lambda p: p['height'] >= self.peakHeightCutoff, kdPeaks)
+            return len(highPeaks) == 2
+        orfs = self.getPhobicOrfs()
         return {
-            'forward': filter(filterer, orfs['forward']),
-            'reverse': filter(filterer, orfs['reverse'])
+            'forward': filter(peakFilter, orfs['forward']),
+            'reverse': filter(peakFilter, orfs['reverse'])
         }
 
-#    def getPhobicOrfs(self, 
+    def getPromotedOrfs(self):
+        def upFilter(orf):
+            promoterRegion = orf.getUpstreamBases(15)[:10] # want -15 to -5 region
+            return promoterRegion.find('GG') >= 0          # >= 0 means it found a match ... right?
+        orfs = self.getTwoPeakOrfs()
+        return {
+            'forward': filter(upFilter, orfs['forward']),
+            'reverse': filter(upFilter, orfs['reverse'])
+        }
 
 
 ########################################################################################
