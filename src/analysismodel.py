@@ -13,6 +13,7 @@ import yaml
 class ORF(object):
 
     def __init__(self, startIndex, stopIndex, sequence):
+        assert (stopIndex - startIndex) % 3 == 0, "ORF length must be multiple of 3"
         self._startIndex = startIndex
         self._stopIndex = stopIndex
         self._sequence = sequence
@@ -40,35 +41,34 @@ class ORF(object):
 
     ######################
 
-    def getResidues(self):
-        return translate.codonsToResidues(self.getCodons())
+    def getBases(self):
+        start, stop = self.getStartIndex(), self.getStopIndex()
+        bases = self._sequence.getBases()
+
+        # typical case
+        if stop > start:
+            self._bases = bases[start:stop]
+
+        # boundary condition:  circular genome, ORF wraps around
+        else:
+            self._bases = bases[start:] + bases[:stop]
+
+        return self._bases
+
+    def getUpstreamBases(self, n):
+        start = self.getStartIndex()
+        return self._sequence.getBases()[start - n : start]
+
+    def getDownstreamBases(self, n):
+        '''includes stop sequence'''
+        stop = self.getStopIndex()
+        return self._sequence.getBases()[stop : stop + n]
 
     def getCodons(self):
-        if self._codons is None:
-            seqCodons = self._sequence.getCodons()
-            start, stop = self._startIndex, self._stopIndex
+        return sq.makeCodons(self.getBases())
 
-            # typical case
-            if stop > start:
-                self._codons = seqCodons[start:stop]
-
-            # boundary condition:  circular genome, ORF wraps around
-            else:
-                self._codons = seqCodons[start:] + seqCodons[:stop]
-
-        return self._codons
-
-    def getBases(self):
-        return ''.join([c.bases for c in self.getCodons()])
-
-    def getStopCodon(self):
-        return self._sequence.getCodons()[self._stopIndex]
-
-    def getUpstreamCodons(self, n):
-        return self._sequence.getCodons()[self._startIndex - n : self._startIndex]
-
-    def getDownstreamCodons(self, n):
-        return self._sequence.getCodons()[self._stopIndex : self._stopIndex + n]
+    def getResidues(self):
+        return translate.codonsToResidues(self.getCodons())
 
     def getKyteDool(self, windowRadius):
         if not self._kyteDool.has_key(windowRadius):
@@ -85,20 +85,29 @@ class Sequence(object):
 
     def __init__(self, bases):
         self._bases = bases
-        self._codons = sq.makeCodons(bases)
+        self._codons = [None, None, None]
 
     def getBases(self):
         return self._bases
 
-    def getCodons(self):
-        return self._codons
+    def getCodons(self, n):
+        assert n in [0, 1, 2], "codon alignment must be 0, 1, or 2"
+        bases = self.getBases()
+        if self._codons[n] is None:
+            self._codons[n] = sq.makeCodons(bases[n:] + bases[:n])
+        return self._codons[n]
 
     def getOrfs(self):
-        orfEnds = sq.getOrfEndsCircular(self._codons)
-        return [ORF(start, stop, self) for (start, stop) in orfEnds]
+        '''finds for ORFs in all 3 alignments'''
+        orfs = []
+        for n in range(3): # [0, 1, 2]
+            orfEnds = sq.getOrfEndsCircular(self.getCodons(n))
+            orfs += [ORF(start * 3 + n, stop * 3 + n, self) for (start, stop) in orfEnds]
+        return orfs
 
 
-class OrfSelector(object):
+
+class SequenceMuncher(object):
 
     def __init__(self, sequence):
         self._forward = sequence
@@ -133,38 +142,40 @@ class OrfTest(unittest.TestCase):
     def setUp(self):
         pass
 
-    def testCodons(self):
-        orf = ORF(1, 3, Sequence('ACGTATCAGCAA'))
+    def testBases(self):
+        orf = ORF(3, 9, Sequence('ACGTATCAGCAA'))
         self.assertEqual('TATCAG', orf.getBases())
 
     def testCodonsLength(self):
-        orf = ORF(3, 7, Sequence('ACGTGTGGCTAGCTAGCATCAGCA'))
+        orf = ORF(9, 21, Sequence('ACGTGTGGCTAGCTAGCATCAGCA'))
         self.assertEqual(4, len(orf.getCodons()))
         self.assertEqual('CTA', orf.getCodons()[1].bases)
 
-    def testCodonsWraparound(self):
-        orf = ORF(4, 2, Sequence('ACGTGT' + 'GGCTAG' + 'CTAGCATCAGCA'))
+    def testBasesWraparound(self):
+        orf = ORF(12, 6, Sequence('ACGTGT' + 'GGCTAG' + 'CTAGCATCAGCA'))
         self.assertEqual('CTAGCATCAGCAACGTGT', orf.getBases())
 
     def testKyteDool(self):
-        orf = ORF(2, 7, Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA'))
+        orf = ORF(6, 21, Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA'))
         self.assertEqual(3, len(orf.getKyteDool(1)))
         self.assertEqual(5, len(orf.getKyteDool(0)))
         self.assertEqual(orf.getKyteDool(1), orf.getKyteDool(1))
 
-    def testGetUpstreamCodons(self):
-        orf = ORF(4, 7, Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA'))
-        self.assertEqual('GGC', orf.getUpstreamCodons(2)[0].bases)
+    def testGetUpstreamBases(self):
+        orf = ORF(12, 21, Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA'))
+        self.assertEqual('GGCGAT', orf.getUpstreamBases(6))
 
-    def testGetDownstreamCodons(self):
+    def testGetDownstreamBases(self):
+        orf = ORF(6, 15, Sequence('ACGTGT' + 'GGCGATCAA' + 'GCATCAGCAAAA'))
+        self.assertEqual('GCATCAGCA', orf.getDownstreamBases(9))
+
+    def testGetKdPeaks(self):
         self.assertTrue(False)
 
-    def testGetStopCodon(self):
-        orf = ORF(4, 7, Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA'))
-        self.assertEqual('GCA', orf.getStopCodon().bases)
-
-    def testGetPeaks(self):
-        self.assertTrue(False)
+    def testStartStopIndex(self):
+        orf = ORF(12, 21, Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA'))
+        self.assertEqual(12, orf.getStartIndex())
+        self.assertEqual(21, orf.getStopIndex())
 
 
 class SequenceTest(unittest.TestCase):
@@ -174,13 +185,13 @@ class SequenceTest(unittest.TestCase):
 
     def testCodonsLength(self):
         seq = Sequence('ACGTGTGGCGATCAAGCATCAGCAAAA')
-        self.assertEqual(9, len(seq.getCodons()))
+        self.assertEqual([9, 9, 9], [len(seq.getCodons(0)), len(seq.getCodons(1)), len(seq.getCodons(2))])
 
     def testGetOrfs(self):
         seq = Sequence('ACG' + 'TTGGGCTAA' + 'ATGGCATCAGCATAA')
         orfs = seq.getOrfs()
         self.assertEqual(2, len(orfs))
-        self.assertEqual(set([(1, 3), (4, 8)]), set(map(lambda o: (o.getStartIndex(), o.getStopIndex()), orfs)))
+        self.assertEqual(set([(3, 9), (12, 24)]), set(map(lambda o: (o.getStartIndex(), o.getStopIndex()), orfs)))
         self.assertEqual(set([2, 4]), set(map(lambda o: len(o.getCodons()), orfs)))
 
     def testGetOrfsWraparound(self):

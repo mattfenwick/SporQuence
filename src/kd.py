@@ -65,12 +65,26 @@ class KdTest(unittest.TestCase):
         self.assertEqual(20, len(kdIndex))
 
     def testGetResidueScore(self):
-        self.assertEqual(1, 0)
+        self.assertEqual((2.8, -0.7), (getResidueScore('F'), getResidueScore('T')))
+
+    def testScoredResiduesSize(self):
+        self.assertEqual(20, len(kdIndex))
 
     def testSmooth(self):
         self.assertEqual(1, 0)
 
+    def testSmoothLength(self):
+        smoothed = smooth(range(100), 10)
+        self.assertEqual(len(smoothed), 80)
+
     def testAlgorithm(self):
+        rs = 'MATTCV'
+        c1, c2 = kyteDoolittle(rs, 1), kyteDoolittle(rs, 2)
+        self.assertEqual(1.0, c1[0])
+        self.assertAlmostEqual(.4 / 3, c1[1])
+        self.assertAlmostEqual(0.96, c2[0])
+
+    def testAlgorithmLength(self):
         rs = 'MATTCVGHKWERTY'
         calced = kyteDoolittle(rs, 2)
         self.assertEqual(len(calced), len(rs) - 4)
