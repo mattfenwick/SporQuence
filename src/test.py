@@ -1,8 +1,10 @@
 import unittest
 
 import model
-import sequence
-import bacillussubtilis168 as bs
+import orfind.finder as fi
+import orfind.sequence as sq
+import orfind.bacillussubtilis168 as bs
+import orfind.model as ormodel
 #import glue
 import kd
 import translate as tr
@@ -17,7 +19,7 @@ def getSuite(mod):
 
 
 def runTests():
-    testModules = [sequence, kd, tr, am, peaks]#, bs] # glue, model]
+    testModules = [sq, fi, ormodel, bs]#[sequence, kd, tr, am, peaks]#, bs] # glue, model]
     mySuite = unittest.TestSuite([getSuite(module) for module in testModules])
     unittest.TextTestRunner(verbosity=2).run(mySuite)
 #    unittest.main()
