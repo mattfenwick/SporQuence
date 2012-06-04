@@ -79,9 +79,15 @@ class ORF(object):
             self._kyteDool[windowRadius] = kd.kyteDoolittle(residues, windowRadius)
         return self._kyteDool[windowRadius]
 
+    def getTriangleKyteDool(self, windowRadius):
+        residues = self.getResidues()
+        return kd.triangleKyteDoolittle(residues, windowRadius)
+
     def getKDPeaks(self, kdRadius, peakRadius):
         return peaks.find1DPeaks(self.getKyteDool(kdRadius), peakRadius)
 
+    def getTriangleKDPeaks(self, kdRadius, peakRadius):
+        return peaks.find1DPeaks(self.getTriangleKyteDool(kdRadius), peakRadius)
 
 
 class Sequence(object):
@@ -126,9 +132,9 @@ class SequenceMuncher(object):
     def getOrfs(self):
         if self._orfs is None:
             self._orfs = {
-            'forward': self._forward.getOrfs(),
-            'reverse': self._reverse.getOrfs()
-        }
+                'forward': self._forward.getOrfs(),
+                'reverse': self._reverse.getOrfs()
+            }
         return self._orfs
 
     def getSmallOrfs(self):
@@ -145,7 +151,7 @@ class SequenceMuncher(object):
 
     def getPhobicOrfs(self):
         def kdFilter(orf):
-            kdResults = orf.getKyteDool(self.kdRadius)
+            kdResults = orf.getTriangleKyteDool(self.kdRadius)
             return len(filter(lambda x: x > self.peakHeightCutoff, kdResults)) > 0
         orfs = self.getSmallOrfs()
         return {
@@ -155,7 +161,7 @@ class SequenceMuncher(object):
 
     def getTwoPeakOrfs(self):
         def peakFilter(orf):
-            kdPeaks = orf.getKDPeaks(self.kdRadius, self.peakRadius)
+            kdPeaks = orf.getTriangleKDPeaks(self.kdRadius, self.peakRadius)
             highPeaks = filter(lambda p: p['height'] >= self.peakHeightCutoff, kdPeaks)
             return len(highPeaks) == 2
         orfs = self.getPhobicOrfs()

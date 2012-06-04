@@ -7,9 +7,13 @@ import yaml
 ######################
 
 
-muncher = am.SequenceMuncher(am.Sequence(bs.sequence), peakRadius = 8, peakHeightCutoff = 2.5)
+muncher = am.SequenceMuncher(am.Sequence(bs.sequence), kdRadius = 9, peakRadius = 8, peakHeightCutoff = 1.5)
 
 f, r = muncher.getPromotedOrfs()['forward'], muncher.getPromotedOrfs()['reverse']
+
+fs = [[range(len(o.getKyteDool(9))), o.getKyteDool(9), o.getTriangleKyteDool(9)] for o in f]
+rs = [[range(len(o.getKyteDool(9))), o.getKyteDool(9), o.getTriangleKyteDool(9)] for o in r]
+
 
 
 ############################

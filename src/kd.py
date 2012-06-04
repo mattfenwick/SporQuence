@@ -37,7 +37,7 @@ def smooth(values, windowRadius):
     '''[Float] -> Int -> [Float]'''
     i = windowRadius
     smoothed = []
-    width = 2 * windowRadius + 1
+    width = float(2 * windowRadius + 1)
     while i < len(values) - windowRadius:
         start, stop = i - windowRadius, i + windowRadius + 1
         total = sum(values[start: stop])
@@ -50,6 +50,35 @@ def kyteDoolittle(residues, windowRadius):
     '''[Residue] -> Int -> [Float]'''
     scored = [getResidueScore(r) for r in residues]
     smoothed = smooth(scored, windowRadius)
+    return smoothed
+
+
+def triangleSmooth(values, windowRadius):
+    '''[Float] -> Int -> [Float]'''
+    i = windowRadius
+
+    fWs, rWs = range(1, windowRadius + 1), range(windowRadius, 0, -1)
+    weights = fWs + [windowRadius + 1] + rWs
+    totalWeight = float(sum(weights))
+    
+    smoothed = []
+    width = 2 * windowRadius + 1
+    while i < len(values) - windowRadius:
+        start, stop = i - windowRadius, i + windowRadius + 1
+        vals = values[start: stop]
+        
+        assert len(vals) == len(weights), "need equal number of values and weights"
+        
+        total = sum([v * w for (v, w) in zip(vals, weights)])
+        smoothed.append(total / totalWeight)
+        i += 1
+    return smoothed
+
+
+def triangleKyteDoolittle(residues, windowRadius):
+    '''[Residue] -> Int -> [Float]'''
+    scored = [getResidueScore(r) for r in residues]
+    smoothed = triangleSmooth(scored, windowRadius)
     return smoothed
 
 
@@ -88,6 +117,22 @@ class KdTest(unittest.TestCase):
         rs = 'MATTCVGHKWERTY'
         calced = kyteDoolittle(rs, 2)
         self.assertEqual(len(calced), len(rs) - 4)
+
+    def testTriangleKD(self):
+        rs = 'MATTCV'
+        c1, c2 = triangleKyteDoolittle(rs, 1), triangleKyteDoolittle(rs, 2)
+        self.assertEqual((4, 2), (len(c1), len(c2)))
+        self.assertEqual(1.2, c1[0])
+        self.assertAlmostEqual(-0.075, c1[1])
+
+    def testTriangleSmooth(self):
+        calced = triangleSmooth([1,-1,3,4,5], 1)
+        self.assertEqual(len(calced), 5 - 2)
+        self.assertEqual(calced, [0.5, 2.25, 4])
+        
+        
+        
+        
 
 
 testClasses = [KdTest]
