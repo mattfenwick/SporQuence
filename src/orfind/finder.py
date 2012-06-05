@@ -1,14 +1,8 @@
 import bacillussubtilis168 as bs
+import fmodel as fmodel
 import unittest
-import json
-import fmodel
 
 
-
-
-
-
-###############################
 
 def findOrfs():
     seq = fmodel.Sequence(bs.sequence)
@@ -19,31 +13,32 @@ def filterByLength(orfs, low = 50, high = 80):
     return [orf for orf in orfs if low <= (len(orf.bases) / 3) <= high]
 
 
-if __name__ == "__main__":
+def getMediumOrfs():
     f, r = findOrfs()
     
-    medFs = filterByLength(f)
-    revFs = filterByLength(r)
+    medFors = filterByLength(f)
+    medRevs = filterByLength(r)
     
-    print json.dumps({
-        'forward': [x.toJSONObject() for x in medFs],
-        'reverse': [y.toJSONObject() for y in revFs]   
-    })
-    
-    
+    return [medFors, medRevs]
+
+
+
 ########################################################
 # unit tests
 ########################################################
 
-class HuhTest(unittest.TestCase):
+class OrfFinderTest(unittest.TestCase):
 
     def setUp(self):
         pass
 
-    def testOne(self):
-        self.assertEqual(0, 1)
+    def testNumOrfs(self):
+        orfs = findOrfs()
+        self.assertEqual(189309, sum(map(len, orfs)))
+
+    def testFilteredOrfs(self):
+        orfs = map(filterByLength, findOrfs())
+        self.assertEqual(12220, sum(map(len, orfs)))
 
     
-
-testClasses = [HuhTest]
-
+testClasses = [OrfFinderTest]

@@ -1,8 +1,5 @@
-import model
 import unittest
 
-
-# translate codons to residues
 
 
 residueToCodons = {
@@ -43,7 +40,7 @@ codonToResidue = flipCode(residueToCodons)
 
 def codonsToResidues(codons):
     '''[Codon] -> [Residue]'''
-    return [codonToResidue[c.bases] for c in codons]
+    return [codonToResidue[c] for c in codons]
 
 
 ##########################################
@@ -83,7 +80,7 @@ class C2RTest(unittest.TestCase):
             self.assertTrue(b in "ACGT", "base %s" % str(b))
 
     def testCodonsToResidues(self):
-        rs = codonsToResidues([model.Codon(seq) for seq in ['ACG', 'ATG', 'TTA']])
+        rs = codonsToResidues(['ACG', 'ATG', 'TTA'])
         self.assertEqual(len(rs), 3)
         self.assertEqual(rs[1], 'M')
 

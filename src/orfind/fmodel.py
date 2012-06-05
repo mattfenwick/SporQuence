@@ -1,5 +1,4 @@
 import unittest
-import json
 import sequence
 
 
@@ -24,9 +23,6 @@ class ORF(object):
             'upstream'    : self.upstream,
             'downstream'  : self.downstream
         }
-
-    def __repr__(self):
-        return json.dumps(self.toJSONObject())
 
     ######################
 

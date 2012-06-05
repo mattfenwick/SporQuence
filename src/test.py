@@ -6,10 +6,10 @@ import orfind.sequence as sq
 import orfind.bacillussubtilis168 as bs
 import orfind.model as ormodel
 #import glue
-import kd
-import translate as tr
-import analysismodel as am
-import peaks
+#import kd
+#import translate as tr
+#import analysismodel as am
+#import peaks
 
 
 
