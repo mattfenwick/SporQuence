@@ -2,7 +2,7 @@ import bacillussubtilis168 as bs
 import sequence
 
 
-forward = bs.sequence
+forward = bs.bases
 reverse = sequence.reverseComplement(forward)
 
 

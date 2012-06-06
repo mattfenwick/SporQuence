@@ -5,7 +5,7 @@ import unittest
 
 
 def findOrfs():
-    seq = model.Sequence(bs.sequence, True)
+    seq = model.Sequence(bs.bases, True)
     return [seq.getOrfs(), seq.getReverseComplement().getOrfs()]
 
 

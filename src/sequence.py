@@ -24,7 +24,15 @@ STARTS = ["GTG", "ATG", "TTG", "CTG"]
 STOPS = ["TAA", "TAG", "TGA"]
 
 def getOrfEndsLinear(codons):
-    '''[Codon] -> [(Int, Int)]'''
+    '''[Codon] -> [(Int, Int)]
+    
+    Finds open reading frames in a codon sequence.
+    Assumes that the sequence is linear.
+    Finds longest possible ORFS -- i.e. in 
+    'ATGATGCCCTAA', would find one ORF spanning
+    the entire sequence.
+    
+    '''
     inORF, orfEnds = False, []
     ix, start = 0, None
 
@@ -44,7 +52,15 @@ def getOrfEndsLinear(codons):
 
 
 def getOrfEndsCircular(codons):
-    '''[Codon] -> [(Int, Int)]'''
+    '''[Codon] -> [(Int, Int)]
+    
+    Finds open reading frames in a codon sequence.
+    Assumes that the sequence is circular.
+    Finds longest possible ORFS -- i.e. in 
+    'TAAATGATGCCC', would find one ORF spanning
+    the entire sequence.
+    
+    '''
     i, firstStop, firstStart, length, orfEnds = 0, None, None, len(codons), []
 
     # find first stop
@@ -87,6 +103,40 @@ def getOrfEndsCircular(codons):
         orfEnds.append((start, i))
 
     return orfEnds
+
+
+
+
+def readToNextStop(codons, index):
+    '''[Codons] -> Int -> (Int, Int)'''
+    assert codons[index] in STARTS
+        
+    i, stop, length = index + 1, None, len(codons)
+    while i != index:
+        if codons[i] in STOPS:
+            return (index, i)
+        i += 1
+        i %= length
+        
+    raise ValueError("no stop codon found")
+
+
+def getAllOrfEnds(codons):
+    '''[Codon] -> [(Int, Int)]
+    
+    Finds open reading frames in codon sequence.
+    Assumes that the sequence is circular.
+    Finds all possible ORFS -- i.e. in 
+    'TAAATGATGCCC', would find two ORFs.
+    
+    '''
+    i, length, orfEnds = 0, len(codons), []
+    while i < length:
+        if codons[i] in STARTS:
+            orfEnds.append(readToNextStop(codons, i))
+        i += 1
+    return orfEnds
+    
 
 
 
