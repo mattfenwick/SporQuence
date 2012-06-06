@@ -1,5 +1,5 @@
-import orfind.bacillussubtilis168 as bs
-import orfind.sequence as sequence
+import bacillussubtilis168 as bs
+import sequence
 
 
 forward = bs.sequence

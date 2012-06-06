@@ -1,12 +1,12 @@
 import bacillussubtilis168 as bs
-import fmodel as fmodel
+import model
 import unittest
 
 
 
 def findOrfs():
-    seq = fmodel.Sequence(bs.sequence)
-    return [seq.getOrfs(), seq.getReverseOrfs()]
+    seq = model.Sequence(bs.sequence, True)
+    return [seq.getOrfs(), seq.getReverseComplement().getOrfs()]
 
 
 def filterByLength(orfs, low = 50, high = 80):

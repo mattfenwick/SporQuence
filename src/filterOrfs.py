@@ -1,8 +1,7 @@
-import orfilter.kd         as kd
-import orfilter.translate  as translate
-import orfilter.peaks      as peaks
-
-import orfind.sequence     as sq
+import kd         as kd
+import translate  as translate
+import peaks      as peaks
+import sequence   as sq
 
 import unittest
 

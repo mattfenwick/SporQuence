@@ -19,6 +19,7 @@ def makeCodons(bases):
     return codons
 
 
+
 STARTS = ["GTG", "ATG", "TTG", "CTG"]
 STOPS = ["TAA", "TAG", "TGA"]
 
