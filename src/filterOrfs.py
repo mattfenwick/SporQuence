@@ -15,52 +15,107 @@ def bothKds(residues, kdRadius):
 
 
 
-# analysis objects (i.e. ugly)
-
-class ORFAnalysis(object):
-
-    def __init__(self, orf):
-        self._orf = orf
-
-    def getCodons(self):
-        return sq.makeCodons(self._orf['sequence'])
-
-    def getResidues(self):
-        return ''.join(translate.codonsToResidues(self.getCodons()))
-
-
-
-
 ##########################
 ## filters
 
 
-def hasHighKdPeak(residues, 
+def hasHighPhobicPeak(orfAnal, 
                   kdRadius = 9, 
                   minHeight = 2.0, 
                   algorithm = kd.triangleKyteDoolittle):
+    residues = orfAnal.getResidues()
     kdResults = algorithm(residues, kdRadius)
     return len(filter(lambda x: x > minHeight, kdResults)) > 0
   
     
-def hasNPhobicKdPeaks(residues, 
+def hasNPhobicPeaks(orfAnal, 
                       numPeaks = 2, 
                       minHeight = 1.5, 
                       peakRadius = 9, 
                       kdRadius = 9, 
                       algorithm = kd.triangleKyteDoolittle):
+    residues = orfAnal.getResidues()
     hydroPhobicity = algorithm(residues, kdRadius)
     kdPeaks = peaks.find1DPeaks(hydroPhobicity, peakRadius)
     highPeaks = filter(lambda p: p['height'] >= minHeight, kdPeaks)
     return len(highPeaks) == numPeaks
 
 
-def hasUpstreamSequence(orf, 
+def hasUpstreamSequence(orfAnal, 
                         upstreamSequence = 'GG'):
-    upstream = orf['upstream']
-
+    upstream = orfAnal._orf['upstream']
     promoterRegion = upstream[-15:-5]                  # want -15 to -5 region
     return promoterRegion.find(upstreamSequence) >= 0  # >= 0 means it found a match ... right?
+
+
+########################
+# analysis objects
+
+algorithms = {
+    'kyteDool': kd.kyteDoolittle,
+    'triKyteDool': kd.triangleKyteDoolittle              
+}
+    
+class ORFAnalysis(object):
+
+    def __init__(self, orf):
+        self.orf = orf
+
+    def getCodons(self):
+        return sq.makeCodons(self.orf['sequence'])
+
+    def getResidues(self):
+        return ''.join(translate.codonsToResidues(self.getCodons()))     
+
+    def getPhobicity(self, algorithm, windowRadius):
+        alg = algorithms[algorithm]
+        residues = self.getResidues()
+        return alg(residues, windowRadius)          
+                              
+    def getPhobicityPeaks(self, algorithm, windowRadius, peakRadius):          
+        return peaks.find1DPeaks(self.getPhobicity(algorithm, windowRadius), peakRadius)
+
+
+filters = {
+    'nPhobicPeaks': hasNPhobicPeaks,
+    'upstream': hasUpstreamSequence
+}
+
+
+class ORFCollection(object):
+    
+    def __init__(self, orfAnals):
+        self._orfAnals = orfAnals
+        
+    def getOrfAnals(self):
+        return self._orfAnals
+    
+    def orfFilter(self, filterName, *args, **kwargs):
+        filterFunc = filters[filterName]
+        filtered = [orfAnal for orfAnal in self.getOrfAnals() if filterFunc(orfAnal, *args, **kwargs)]
+        return ORFCollection(filtered)
+    
+    def findOrf(self, 
+                start = None, 
+                stop = None, 
+                startFilter = None, 
+                stopFilter = None, 
+                orfFilter = None,
+                *args, **kwargs):
+        orfAnals = self.getOrfAnals()
+        if start is not None:
+            orfAnals = filter(lambda o: o.orf['start'] == start, orfAnals)
+        if stop is not None:
+            orfAnals = filter(lambda o: o.orf['stop'] == stop, orfAnals)
+        if startFilter is not None:
+            orfAnals = filter(lambda o: startFilter(o.orf['start']), orfAnals)
+        if stopFilter is not None:
+            orfAnals = filter(lambda o: stopFilter(o.orf['stop']), orfAnals)
+        if orfFilter is not None:
+            filterFunc = filters[orfFilter]
+            orfAnals = filter(lambda o: filterFunc(o, *args, **kwargs), orfAnals)
+        return ORFCollection(orfAnals)
+        
 
 
 ########################################################################################

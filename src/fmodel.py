@@ -56,9 +56,15 @@ class Sequence(object):
     def __init__(self, bases):
         self._bases = bases
         self._codons = [None, None, None]
+        self._reverse = None
 
     def getBases(self):
         return self._bases
+    
+    def getReverseBases(self):
+        if self._reverse is None:
+            self._reverse = sequence.reverseComplement(self.getBases())
+        return self._reverse
 
     def getCodons(self, n):
         assert n in [0, 1, 2], "codon alignment must be 0, 1, or 2"
@@ -76,7 +82,7 @@ class Sequence(object):
         return orfs
     
     def getReverseOrfs(self):
-        rSeq = Sequence(sequence.reverseComplement(self._bases))
+        rSeq = Sequence(self.getReverseBases())
         return rSeq.getOrfs()
             
             
