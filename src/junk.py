@@ -1,5 +1,5 @@
 import finder
-import filterOrfs as fo
+import filterer as fo
 import json
 import unittest
 
@@ -14,8 +14,8 @@ def loadOrfs(path):
 
 def getOrfAnalyses(orfs):
     return {
-        'forward': fo.ORFCollection([fo.ORFAnalysis(o) for o in orfs['forward']]),
-        'reverse': fo.ORFCollection([fo.ORFAnalysis(o) for o in orfs['reverse']])
+        'forward': fo.OACollection([fo.OrfAnalysis(o) for o in orfs['forward']]),
+        'reverse': fo.OACollection([fo.OrfAnalysis(o) for o in orfs['reverse']])
     }
 
 

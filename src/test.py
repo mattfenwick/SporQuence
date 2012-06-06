@@ -16,7 +16,7 @@ def getSuite(mod):
 
 
 def runTests():
-    testModules = [model, sequence, finder, bs, kd, tr, peaks]
+    testModules = [model, sequence, bs, kd, tr, peaks]#, finder]
     mySuite = unittest.TestSuite([getSuite(module) for module in testModules])
     unittest.TextTestRunner(verbosity=2).run(mySuite)
 #    unittest.main()

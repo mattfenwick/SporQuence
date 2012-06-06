@@ -1,6 +1,15 @@
-import unittest
 import sequence
+import translate
+import peaks
+import unittest
 
+
+
+
+########################################################################
+# for finding Orfs
+
+START_STOP_ERROR = "start and stop must be between 0 and sequence length"
 
 
 class Orf(object):
@@ -22,6 +31,10 @@ class Orf(object):
     '''
 
     def __init__(self, start, stop, sequence):
+        length = len(sequence.getBases())
+        assert 0 <= start <= length, START_STOP_ERROR
+        assert 0 <= stop <= length, START_STOP_ERROR
+        
         self.start = start
         self.stop = stop
         self._sequence = sequence
@@ -156,7 +169,62 @@ class Sequence(object):
     def getReverseComplement(self):
         rSeq = Sequence(self._getReverseBases(), not self.isSense())
         return rSeq
-            
+
+
+
+
+########################################################################
+# for analysis:  filtering and analyzing Orfs
+
+    
+class OrfAnalysis(object):
+
+    def __init__(self, orf):
+        self.orf = orf
+
+    def getCodons(self):
+        return sequence.makeCodons(self.orf['bases'])
+
+    def getResidues(self):
+        return ''.join(translate.codonsToResidues(self.getCodons()))     
+
+    def getPhobicity(self, algorithm, windowRadius):
+        residues = self.getResidues()
+        return algorithm(residues, windowRadius)          
+                              
+    def getPhobicityPeaks(self, algorithm, windowRadius, peakRadius):          
+        return peaks.find1DPeaks(self.getPhobicity(algorithm, windowRadius), peakRadius)
+
+
+class OACollection(object):
+    
+    def __init__(self, orfAnals):
+        self._orfAnals = orfAnals
+        
+    def getOrfAnals(self):
+        return self._orfAnals
+    
+    def findOrf(self, 
+                start = None, 
+                stop = None, 
+                startFilter = None, 
+                stopFilter = None, 
+                orfFilter = None,
+                *args, **kwargs):
+        orfAnals = self.getOrfAnals()
+        if start is not None:
+            orfAnals = filter(lambda o: o.orf['start'] == start, orfAnals)
+        if stop is not None:
+            orfAnals = filter(lambda o: o.orf['stop'] == stop, orfAnals)
+        if startFilter is not None:
+            orfAnals = filter(lambda o: startFilter(o.orf['start']), orfAnals)
+        if stopFilter is not None:
+            orfAnals = filter(lambda o: stopFilter(o.orf['stop']), orfAnals)
+        if orfFilter is not None:
+            orfAnals = filter(lambda o: orfFilter(o, *args, **kwargs), orfAnals)
+        return OACollection(orfAnals)
+        
+     
             
 ########################################################
 # unit tests
@@ -243,7 +311,35 @@ class SequenceTest(unittest.TestCase):
         self.assertEqual('TAACC', ofs[1].getDownstream(5))
         self.assertEqual('GTTAC', ors[0].getUpstream(5))
         self.assertEqual(1, ors[0].getNormStart())
+        
 
+
+class OrfAnalysisTest(unittest.TestCase):
+
+    def setUp(self):
+        self.orf = Orf(2, 14, Sequence('TTACGCTACCTTTCGCC', True))
+
+    def testCodonsLength(self):
+        orfA = OrfAnalysis(self.orf.toJSONObject(4))
+        self.assertEqual(4, len(orfA.getCodons()))
+        self.assertEqual('CTA', orfA.getCodons()[1])
+
+    def testPhobicity(self):
+        self.assertTrue(False)
+
+    def testPhobicityPeaks(self):
+        self.assertTrue(False)
+        
+
+
+class OACollectionTest(unittest.TestCase):
+
+    def setUp(self):
+        pass
     
+    def testOne(self):
+        self.assertFalse(True)
 
-testClasses = [OrfTest, SequenceTest]
+
+
+testClasses = [OrfTest, SequenceTest, OrfAnalysisTest, OACollectionTest]
