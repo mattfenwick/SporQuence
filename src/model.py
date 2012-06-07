@@ -116,6 +116,7 @@ class Orf(object):
             'bases'       : self.bases,
             'upstream'    : self.getUpstream(n),
             'downstream'  : self.getDownstream(n),
+            'isSense'     : self._isSense()
         }
         
 
@@ -283,14 +284,16 @@ class OrfTest(unittest.TestCase):
             'stop': 14, 
             'bases': 'GCTAGCATCGAT', 
             'upstream': 'TGA', 
-            'downstream': 'TCG'
+            'downstream': 'TCG',
+            'isSense': True
         }, self.forNorm.toJSONObject(3))
         self.assertEqual({
             'start': 5, 
             'stop': 10, 
             'bases': 'GATCGAGAGCTA', 
             'upstream': 'ATC', 
-            'downstream': 'GCA'
+            'downstream': 'GCA',
+            'isSense': False
         }, self.revWrap.toJSONObject(3))
 
 

@@ -1,31 +1,16 @@
 import finder
 import filterer as fo
+import model
 import json
 import unittest
 
 
 
-def loadOrfs(path):
+def loadOrfAnals(path):
     infile = open(path, 'r')
     orfs = json.loads(infile.read())
     infile.close()
-    return orfs
-
-
-def getOrfAnalyses(orfs):
-    return {
-        'forward': fo.OACollection([fo.OrfAnalysis(o) for o in orfs['forward']]),
-        'reverse': fo.OACollection([fo.OrfAnalysis(o) for o in orfs['reverse']])
-    }
-
-
-def findOrfs():
-    [medForFs, medRevFs] = finder.getMediumOrfs()
-    
-    return {
-        'forward': [x.toJSONObject(100) for x in medForFs],
-        'reverse': [y.toJSONObject(100) for y in medRevFs]   
-    }
+    return model.OACollection([model.OrfAnalysis(o) for o in orfs])
     
     
 def findAllOrfs():
