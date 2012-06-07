@@ -113,15 +113,15 @@ def readToNextStop(codons, index):
         
     i, stop, length = index + 1, None, len(codons)
     while i != index:
+        i %= length
         if codons[i] in STOPS:
             return (index, i)
         i += 1
-        i %= length
         
     raise ValueError("no stop codon found")
 
 
-def getAllOrfEnds(codons):
+def getAllOrfEndsCircular(codons):
     '''[Codon] -> [(Int, Int)]
     
     Finds open reading frames in codon sequence.
@@ -255,6 +255,41 @@ class CircularOrfsTest(unittest.TestCase):
         bases = 'ACCTGA' + 'CCGCAC' + 'TTGTTT'
         orfs = getOrfEndsCircular(makeCodons(bases))
         self.assertEqual((4, 1), orfs[0])
+        
+        
+class CircularAllOrfsTest(unittest.TestCase):
+    
+    def setUp(self):
+        pass
+    
+    def testGetOrfs(self):
+        codons = makeCodons('ACTGTGACCTTGTTTTGAACT')
+        orfEnds = getAllOrfEndsCircular(codons)
+        self.assertEqual(set(orfEnds), set([(1, 5), (3, 5)]))
+    
+    def testWraparound(self):
+        codons = makeCodons('TAGATTATGGTGCTG')
+        orfEnds = getAllOrfEndsCircular(codons)
+        self.assertEqual(set(orfEnds), set([(2, 0), (4, 0), (3, 0)]))
+    
+    @unittest.expectedFailure
+    def testNostop(self):
+        codons = makeCodons('ACTATGGTGCTG')
+        orfEnds = getAllOrfEndsCircular(codons)
+        self.assertEqual(len(orfEnds), 0)
+    
+    def testNostartNostop(self):
+        codons = makeCodons('TAGATTCCCCTCTAT')
+        orfEnds = getAllOrfEndsCircular(codons)
+        self.assertEqual(orfEnds, [])
+        
+    def testAllOrfsAllAlignments(self):
+        bases = 'AAATAAAATAGA' + 'ATGGTGTGCTGC'
+        o1, o2, o3 = map(lambda x: getAllOrfEndsCircular(makeCodons(x)), [bases, bases[1:] + bases[:1], bases[2:] + bases[:2]])
+        self.assertEqual([2, 0, 2], map(len, [o1, o2, o3]))
+        self.assertEqual((4, 1), o1[0])
+        self.assertEqual((5, 2), o3[0])
+        self.assertEqual((6, 2), o3[1])
     
 
-testClasses = [CodonsTest, ComplementTest, LinearOrfsTest, CircularOrfsTest]
+testClasses = [CodonsTest, ComplementTest, LinearOrfsTest, CircularOrfsTest, CircularAllOrfsTest]

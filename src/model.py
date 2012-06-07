@@ -150,6 +150,13 @@ class Sequence(object):
             self._codons[n] = sequence.makeCodons(bases[n:] + bases[:n])
         return self._codons[n]
     
+    def _getOrfs(self, algorithm):
+        orfs = []
+        for n in range(3): # [0, 1, 2]
+            orfEnds = algorithm(self._getCodons(n))
+            orfs += [Orf(start * 3 + n, stop * 3 + n, self) for (start, stop) in orfEnds]
+        return orfs
+    
     ##############################
 
     def getBases(self):
@@ -157,14 +164,14 @@ class Sequence(object):
     
     def isSense(self):
         return self._isSense
-
+        
     def getOrfs(self):
-        '''finds Orfs in all 3 alignments'''
-        orfs = []
-        for n in range(3): # [0, 1, 2]
-            orfEnds = sequence.getOrfEndsCircular(self._getCodons(n))
-            orfs += [Orf(start * 3 + n, stop * 3 + n, self) for (start, stop) in orfEnds]
-        return orfs
+        '''finds *only leftmost, longest* Orfs in all 3 alignments'''
+        return self._getOrfs(sequence.getOrfEndsCircular)
+    
+    def getAllOrfs(self):
+        '''finds Orfs of all sizes (including overlapping) in all 3 alignments'''
+        return self._getOrfs(sequence.getAllOrfEndsCircular)
     
     def getReverseComplement(self):
         rSeq = Sequence(self._getReverseBases(), not self.isSense())
@@ -311,6 +318,22 @@ class SequenceTest(unittest.TestCase):
         self.assertEqual('TAACC', ofs[1].getDownstream(5))
         self.assertEqual('GTTAC', ors[0].getUpstream(5))
         self.assertEqual(1, ors[0].getNormStart())
+
+    def testGetAllOrfs(self):
+        seq = Sequence('AATTAAAATAGA' + 'ATGGTGTGCTGC', False)
+        # 'GCAGCACACCAT' + 'TCTATTTTAATT'
+        rs, fs = seq.getAllOrfs(), seq.getReverseComplement().getAllOrfs()
+        self.assertEqual(4, len(rs))
+        self.assertEqual(1, len(fs))
+        
+        f = fs[0]
+        self.assertEqual('TAAT',  f.getDownstream(4))
+        self.assertEqual('TTAA',  f.getUpstream(4))
+        self.assertEqual('TTGCA', f.bases[:5])
+        self.assertEqual((22, 19), (f.getNormStart(), f.getNormStop()))
+        
+        myRs = set([(11, 20), (8, 20), (6, 15), (3, 15)])
+        self.assertEqual(myRs, set([(r.getNormStart(), r.getNormStop()) for r in rs]))
         
 
 
