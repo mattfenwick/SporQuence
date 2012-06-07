@@ -23,14 +23,16 @@ def findOrfs():
     [medForFs, medRevFs] = finder.getMediumOrfs()
     
     return {
-        'forward': [x.toJSONObject() for x in medForFs],
-        'reverse': [y.toJSONObject() for y in medRevFs]   
+        'forward': [x.toJSONObject(100) for x in medForFs],
+        'reverse': [y.toJSONObject(100) for y in medRevFs]   
     }
+    
+    
+def findAllOrfs():
+    return [x.toJSONObject(100) for x in finder.getAllMediumOrfs()]
 
 
 if __name__ == "__main__":
-    print json.dumps(findOrfs())
+    print json.dumps(findAllOrfs())
     
     
-
-
