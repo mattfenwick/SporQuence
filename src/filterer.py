@@ -40,6 +40,14 @@ def hasUpstreamSequence(orfAnal,
     return promoterRegion.find(upstreamSequence) >= 0  # >= 0 means it found a match ... right?
 
 
+def matchBases(seq, up, down):
+    def isMatch(orfAnal):
+        orf = orfAnal.orf
+        a, b, c = orf['bases'], orf['upstream'], orf['downstream']
+        return a.startswith(seq) and b.endswith(up) and c.startswith(down)
+    return isMatch
+
+
 
 
 ########################################################################################
