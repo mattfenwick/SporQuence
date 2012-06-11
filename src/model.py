@@ -9,173 +9,181 @@ import unittest
 ########################################################################
 # for finding Orfs
 
-START_STOP_ERROR = "start and stop must be between 0 and sequence length"
-
 
 class Orf(object):
     
-    '''public properties:
-        - start
-        - stop
+    '''public (read-only) properties:
+        - start (normalized by direction)
+        - stop (normalized by direction)
         - bases
+        - upstream
+        - downstream
+        - is_sense
         
        public methods:
-        - getNormStart
-        - getNormStop
-        - getUpstream(n)
-          - n: number of upstream bases
-        - getDownstream(n)
-          - n: number of downstream bases
-        - toJSONObject(n)
-          - n: number of up-/down-stream bases
+        - toJSONObject()
+        
+       unsure methods:
+        - get_codons
+        - get_residues
+        - get_phobicity
+        - get_phobicity_peaks
     '''
 
-    def __init__(self, start, stop, sequence):
-        length = len(sequence.getBases())
-        assert 0 <= start <= length, START_STOP_ERROR
-        assert 0 <= stop <= length, START_STOP_ERROR
+    def __init__(self, start, stop, bases, upstream, downstream, is_sense):
         
         self.start = start
         self.stop = stop
-        self._sequence = sequence
 
-        self.bases = self._getBases()
+        self.bases = bases
         assert len(self.bases) % 3 == 0, "Orf length must be multiple of 3 <%s>" % str(self.bases)
-
-    ######################
-
-    def _getBases(self):
-        start, stop, seq = self.start, self.stop, self._sequence
-        bases = seq.getBases()
-
-        # typical case
-        if stop > start:
-            myBases = bases[start:stop]
-
-        # boundary condition:  circular genome, Orf wraps around
-        else:
-            myBases = bases[start:] + bases[:stop]
-
-        return myBases
         
-    def _isSense(self):
-        return self._sequence.isSense()
-    
-    def _getNormIndex(self, index):
-        seq = self._sequence
-        length = len(seq.getBases())
-        assert 0 <= index < length
-        if self._isSense():
-            return index
-        else:
-            return length - index - 1
-        
-    #########################
-        
-    def getNormStart(self):
-        return self._getNormIndex(self.start)
-        
-    def getNormStop(self):
-        return self._getNormIndex(self.stop)
+        self.upstream = upstream
+        self.downstream = downstream
+        self.is_sense = is_sense
 
-    def getUpstream(self, n):
-        start, seq = self.start, self._sequence
-        bases = seq.getBases()
-        length = len(bases)
 
-        assert n >= 0, "number of upstream bases must be positive"
-        assert n <= length, "number of upstream bases requested greater than sequence length"
-        
-        if start - n >= 0:
-            return bases[start - n : start]
-        else:
-            index = length + start - n
-            return bases[index:] + bases[:start]
-
-    def getDownstream(self, n):
-        '''includes stop sequence'''
-        stop, seq = self.stop, self._sequence
-        bases = seq.getBases()
-        length = len(bases)
-
-        assert n >= 0, "number of upstream bases must be positive"
-        assert n <= length, "number of upstream bases requested greater than sequence length"
-        
-        if stop + n <= length:
-            return bases[stop : stop + n]
-        else:
-            index = stop + n - length
-            return bases[stop:] + bases[:index]
-
-    ######################
-
-    def toJSONObject(self, n):
+    def to_JSON_object(self):
         return {
-            'start'       : self.getNormStart(),
-            'stop'        : self.getNormStop(),
+            'start'       : self.start,
+            'stop'        : self.stop,
             'bases'       : self.bases,
-            'upstream'    : self.getUpstream(n),
-            'downstream'  : self.getDownstream(n),
-            'isSense'     : self._isSense()
+            'upstream'    : self.upstream,
+            'downstream'  : self.downstream,
+            'is_sense'    : self.is_sense
         }
         
+    ##############################
+
+    def get_codons(self):
+        return sequence.makeCodons(self.bases)
+
+    def get_residues(self):
+        return ''.join(translate.codonsToResidues(self.get_codons()))     
+
+    def get_phobicity(self, algorithm, windowRadius):
+        residues = self.get_residues()
+        return algorithm(residues, windowRadius)          
+                              
+    def get_phobicity_peaks(self, algorithm, windowRadius, peakRadius):          
+        return peaks.find1DPeaks(self.get_phobicity(algorithm, windowRadius), peakRadius)
+        
 
 
+
+_START_STOP_ERROR = "start and stop must be between 0 and sequence length"
 
 class Sequence(object):
     
-    '''public properties:
+    '''public (read-only) properties:
         
        public methods:
-        - getBases
-        - isSense
-        - getReverseComplement
-        - getOrfs
+        - get_bases
+        - is_sense
+        - get_reverse_complement
+        - get_orfs
+        - get_all_orfs
+        - build_orf(start, stop)
     '''
 
-    def __init__(self, bases, isSense):
+    def __init__(self, bases, is_sense):
         self._bases = bases
-        self._isSense = isSense
+        self._is_sense = is_sense
         self._codons = [None, None, None]
         self._reverse = None
+        
+    ########################
     
-    def _getReverseBases(self):
+    def _get_reverse_bases(self):
         if self._reverse is None:
-            self._reverse = sequence.reverseComplement(self.getBases())
+            self._reverse = sequence.reverseComplement(self.get_bases())
         return self._reverse
 
-    def _getCodons(self, n):
+
+    def _get_codons(self, n):
         assert n in [0, 1, 2], "codon alignment must be 0, 1, or 2"
-        bases = self.getBases()
+        
+        bases = self.get_bases()
         if self._codons[n] is None:
             self._codons[n] = sequence.makeCodons(bases[n:] + bases[:n])
         return self._codons[n]
     
-    def _getOrfs(self, algorithm):
+    
+    def build_orf(self, bstart, bstop, n):
+        '''Build an Orf given the start and stop indices.
+        
+        Parameters:
+         - bstart:  base-pair start index
+         - bstop:  base-pair stop index
+        '''
+        length = len(self.get_bases())
+        nstart, nstop = [self._get_norm_index(ix) for ix in [bstart, bstop]]
+        bases = self.get_bases(bstart, bstop)
+        up = self.get_bases((bstart - n) % length, bstart)
+        down = self.get_bases(bstop, (bstop + n) % length)
+        return Orf(nstart, nstop, bases, up, down, self.is_sense())
+  
+    
+    def _get_orfs(self, algorithm, width):
         orfs = []
         for n in range(3): # [0, 1, 2]
-            orfEnds = algorithm(self._getCodons(n))
-            orfs += [Orf(start * 3 + n, stop * 3 + n, self) for (start, stop) in orfEnds]
+            orfEnds = algorithm(self._get_codons(n))
+            for ends in orfEnds:
+                bstart, bstop = [cix * 3 + n for cix in ends]
+                new_orf = self.build_orf(bstart, bstop, width)
+                orfs.append(new_orf)
         return orfs
+ 
+    
+    def _get_norm_index(self, index):
+        length = len(self.get_bases())
+        assert 0 <= index < length
+
+        if self.is_sense():
+            return index
+        else:
+            return length - index - 1
     
     ##############################
 
-    def getBases(self):
-        return self._bases
-    
-    def isSense(self):
-        return self._isSense
+    def get_bases(self, start=None, stop=None):
+        if start is None or stop is None:
+            return self._bases
         
-    def getOrfs(self):
+        assert None not in [start, stop], "start and stop can not be None"
+        length = len(self._bases)
+        assert 0 <= start < length, _START_STOP_ERROR
+        assert 0 <= stop < length, _START_STOP_ERROR
+        
+        bases = self._bases
+
+        # typical case
+        if stop > start:
+            my_bases = bases[start:stop]
+
+        # boundary condition:  circular genome, Orf wraps around
+        else:
+            my_bases = bases[start:] + bases[:stop]
+            
+        return my_bases
+ 
+    
+    def is_sense(self):
+        return self._is_sense
+ 
+        
+    def get_orfs(self, n):
         '''finds *only leftmost, longest* Orfs in all 3 alignments'''
-        return self._getOrfs(sequence.getOrfEndsCircular)
+        return self._get_orfs(sequence.getOrfEndsCircular, n)
+
     
-    def getAllOrfs(self):
+    def get_all_orfs(self, n):
         '''finds Orfs of all sizes (including overlapping) in all 3 alignments'''
-        return self._getOrfs(sequence.getAllOrfEndsCircular)
+        return self._get_orfs(sequence.getAllOrfEndsCircular, n)
+
     
-    def getReverseComplement(self):
-        rSeq = Sequence(self._getReverseBases(), not self.isSense())
+    def get_reverse_complement(self):
+        rSeq = Sequence(self._get_reverse_bases(), not self.is_sense())
         return rSeq
 
 
@@ -184,53 +192,18 @@ class Sequence(object):
 ########################################################################
 # for analysis:  filtering and analyzing Orfs
 
+
+class OrfCollection(object):
     
-class OrfAnalysis(object):
-
-    def __init__(self, orf):
-        self.orf = orf
-
-    def getCodons(self):
-        return sequence.makeCodons(self.orf['bases'])
-
-    def getResidues(self):
-        return ''.join(translate.codonsToResidues(self.getCodons()))     
-
-    def getPhobicity(self, algorithm, windowRadius):
-        residues = self.getResidues()
-        return algorithm(residues, windowRadius)          
-                              
-    def getPhobicityPeaks(self, algorithm, windowRadius, peakRadius):          
-        return peaks.find1DPeaks(self.getPhobicity(algorithm, windowRadius), peakRadius)
-
-
-class OACollection(object):
-    
-    def __init__(self, orfAnals):
-        self._orfAnals = orfAnals
+    def __init__(self, orfs):
+        self._orfs = orfs
         
-    def getOrfAnals(self):
-        return self._orfAnals
+    def get_orfs(self):
+        return self._orfs
     
-    def findOrf(self, 
-                start = None, 
-                stop = None, 
-                startFilter = None, 
-                stopFilter = None, 
-                orfFilter = None,
-                *args, **kwargs):
-        orfAnals = self.getOrfAnals()
-        if start is not None:
-            orfAnals = filter(lambda o: o.orf['start'] == start, orfAnals)
-        if stop is not None:
-            orfAnals = filter(lambda o: o.orf['stop'] == stop, orfAnals)
-        if startFilter is not None:
-            orfAnals = filter(lambda o: startFilter(o.orf['start']), orfAnals)
-        if stopFilter is not None:
-            orfAnals = filter(lambda o: stopFilter(o.orf['stop']), orfAnals)
-        if orfFilter is not None:
-            orfAnals = filter(lambda o: orfFilter(o, *args, **kwargs), orfAnals)
-        return OACollection(orfAnals)
+    def filter(self, f):
+        orfs = filter(f, self.get_orfs())
+        return OrfCollection(orfs)
         
      
             
@@ -240,132 +213,150 @@ class OACollection(object):
 
 class OrfTest(unittest.TestCase):
 
-    ''' need to test: 1) forward, normal; 2) forward wrap; 3) reverse normal; 4) reverse wrap'''
-
     def setUp(self):
-        self.forNorm = Orf(2, 14, Sequence('GA' + 'GCTAGCATCGAT'+ 'TCGAT', True))
-        self.forWrap = Orf(8, 3,  Sequence('GAG' + 'CTAGC' + 'ATCGATCGA',  True))
-        self.revNorm = Orf(4, 13, Sequence('GAGC' + 'TAGCATCGA' + 'TCGAT', False))
-        self.revWrap = Orf(11, 6, Sequence('GAGCTA' + 'GCATC' + 'GATCGA',  False))
-
-    def testBases(self):
-        self.assertEqual('GCTAGCATCGAT', self.forNorm.bases)
-        self.assertEqual('ATCGATCGAGAG', self.forWrap.bases)
-        self.assertEqual('TAGCATCGA', self.revNorm.bases)
-        self.assertEqual('GATCGAGAGCTA', self.revWrap.bases)
+        self.orf = Orf(2, 14, 'ACGCTACCTTTCGCC', 'TAATAA', 'CTCA', True)
         
-    def testGetUpstream(self):
-        self.assertEqual('GATGA',   self.forNorm.getUpstream(5))
-        self.assertEqual('CTAGC',   self.forWrap.getUpstream(5))
-        self.assertEqual('GATGAGC', self.revNorm.getUpstream(7))
-        self.assertEqual('TC',      self.revWrap.getUpstream(2))
+    def test_start(self):
+        self.assertEqual(2, self.orf.start)
         
-    def testGetDownstream(self):
-        self.assertEqual('TCGATGA',       self.forNorm.getDownstream(7))
-        self.assertEqual('CTA',           self.forWrap.getDownstream(3))
-        self.assertEqual('TCGAT',         self.revNorm.getDownstream(5))
-        self.assertEqual('GCATCGATCGAG',  self.revWrap.getDownstream(12))
-    
-    def testGetNormStartStop(self):
-        self.assertEqual((2, 14), (self.forNorm.getNormStart(), self.forNorm.getNormStop()))
-        self.assertEqual((8, 3),  (self.forWrap.getNormStart(), self.forWrap.getNormStop()))
-        self.assertEqual((13, 4), (self.revNorm.getNormStart(), self.revNorm.getNormStop()))
-        self.assertEqual((5, 10), (self.revWrap.getNormStart(), self.revWrap.getNormStop()))
-    
-    def testStartStop(self):
-        self.assertEqual((2, 14), (self.forNorm.start, self.forNorm.stop))
-        self.assertEqual((8, 3),  (self.forWrap.start, self.forWrap.stop))
-        self.assertEqual((4, 13), (self.revNorm.start, self.revNorm.stop))
-        self.assertEqual((11, 6), (self.revWrap.start, self.revWrap.stop))
+    def test_stop(self):
+        self.assertEqual(14, self.orf.stop)
         
-    def testToJSONObject(self):
+    def test_bases(self):
+        self.assertEqual('ACGCTACCTTTCGCC', self.orf.bases)
+        
+    def test_upstream(self):
+        self.assertEqual('TAATAA', self.orf.upstream)
+        
+    def test_downstream(self):
+        self.assertEqual('CTCA', self.orf.downstream)
+        
+    def test_is_sense(self):
+        self.assertEqual(True, self.orf.is_sense)
+        
+    def test_to_JSON_object(self):
         self.assertEqual({
             'start': 2, 
             'stop': 14, 
-            'bases': 'GCTAGCATCGAT', 
-            'upstream': 'TGA', 
-            'downstream': 'TCG',
-            'isSense': True
-        }, self.forNorm.toJSONObject(3))
-        self.assertEqual({
-            'start': 5, 
-            'stop': 10, 
-            'bases': 'GATCGAGAGCTA', 
-            'upstream': 'ATC', 
-            'downstream': 'GCA',
-            'isSense': False
-        }, self.revWrap.toJSONObject(3))
-
-
-class SequenceTest(unittest.TestCase):
-
-    def setUp(self):
-        self.seq = Sequence("ACGTAA" + "CCC" + "CTGAAAGGGTAG" + "ATGTTTTAC", True)
-        self.orfs = self.seq.getOrfs()
-
-    def testGetBases(self):
-        self.assertEqual("ACGTAACCCCTGAAAGGGTAGATGTTTTAC", self.seq.getBases())
-
-    def testIsSense(self):
-        self.assertTrue(self.seq.isSense())
-        self.assertFalse(self.seq.getReverseComplement().isSense())
-
-    def testGetReverseComplement(self):
-        self.assertEqual("GTAA" + "AACATCTACCCTTTCAGGGGTTAC" + "GT", self.seq.getReverseComplement().getBases())
-
-    def testGetOrfs(self):
-        ofs, ors = self.orfs, self.seq.getReverseComplement().getOrfs()
-        self.assertEqual(2, len(ofs))
-        self.assertEqual(1, len(ors))
-        self.assertEqual('AACCC', ofs[0].getUpstream(5))
-        self.assertEqual('TAACC', ofs[1].getDownstream(5))
-        self.assertEqual('GTTAC', ors[0].getUpstream(5))
-        self.assertEqual(1, ors[0].getNormStart())
-
-    def testGetAllOrfs(self):
-        seq = Sequence('AATTAAAATAGA' + 'ATGGTGTGCTGC', False)
-        # 'GCAGCACACCAT' + 'TCTATTTTAATT'
-        rs, fs = seq.getAllOrfs(), seq.getReverseComplement().getAllOrfs()
-        self.assertEqual(4, len(rs))
-        self.assertEqual(1, len(fs))
+            'bases': 'ACGCTACCTTTCGCC', 
+            'upstream': 'TAATAA', 
+            'downstream': 'CTCA',
+            'is_sense': True
+        }, self.orf.to_JSON_object())
         
-        f = fs[0]
-        self.assertEqual('TAAT',  f.getDownstream(4))
-        self.assertEqual('TTAA',  f.getUpstream(4))
-        self.assertEqual('TTGCA', f.bases[:5])
-        self.assertEqual((22, 19), (f.getNormStart(), f.getNormStop()))
-        
-        myRs = set([(11, 20), (8, 20), (6, 15), (3, 15)])
-        self.assertEqual(myRs, set([(r.getNormStart(), r.getNormStop()) for r in rs]))
-        
-
-
-class OrfAnalysisTest(unittest.TestCase):
-
-    def setUp(self):
-        self.orf = Orf(2, 14, Sequence('TTACGCTACCTTTCGCC', True))
+    ################
+    # test 'questionable' methods
 
     def testCodonsLength(self):
-        orfA = OrfAnalysis(self.orf.toJSONObject(4))
-        self.assertEqual(4, len(orfA.getCodons()))
-        self.assertEqual('CTA', orfA.getCodons()[1])
+        self.assertEqual(5, len(self.orf.get_codons()))
+        self.assertEqual('CTA', self.orf.get_codons()[1])
 
     def testPhobicity(self):
         self.assertTrue(False)
 
     def testPhobicityPeaks(self):
         self.assertTrue(False)
+
+
+class SequenceTest(unittest.TestCase):
+
+    ''' need to test: 1) forward, normal; 2) forward wrap; 3) reverse normal; 4) reverse wrap'''
+
+    def setUp(self):
+        self.seq = Sequence("ACGTAA" + "CCC" + "CTGAAAGGGTAG" + "ATGTTTTAC", True)
+        self.orfs = self.seq.get_orfs(5)
+        
+        self.for_norm = Sequence('GA' + 'GCTAGCATCGAT' + 'TCGAT', True).build_orf(2, 14, 12)
+        self.for_wrap = Sequence('CTA' + 'GCGAG' + 'CTAGCATCGATCGAA', True).build_orf(8, 3, 12)
+        self.rev_norm = Sequence('GAGC' + 'TAGCATCGA' + 'TCGAT', False).build_orf(4, 13, 12)
+        self.rev_wrap = Sequence('GAGCTA' + 'GCATC' + 'GATCGA',  False).build_orf(11, 6, 12)
+        
+    ########
+
+    def test_get_bases(self):
+        self.assertEqual("ACGTAACCCCTGAAAGGGTAGATGTTTTAC", self.seq.get_bases())
+        self.assertEqual('AACCC', self.seq.get_bases(4, 9))
+        self.assertEqual('TGTTTTACACG', self.seq.get_bases(22, 3))
+
+    def test_is_sense(self):
+        self.assertTrue(self.seq.is_sense())
+        self.assertFalse(self.seq.get_reverse_complement().is_sense())
+
+    def test_get_reverse_complement(self):
+        self.assertEqual("GTAA" + "AACATCTACCCTTTCAGGGGTTAC" + "GT", self.seq.get_reverse_complement().get_bases())
+
+    def test_get_orfs(self):
+        ofs, ors = self.orfs, self.seq.get_reverse_complement().get_orfs(5)
+        self.assertEqual(2, len(ofs))
+        self.assertEqual(1, len(ors))
+        self.assertEqual('AACCC', ofs[0].upstream)
+        self.assertEqual('TAACC', ofs[1].downstream)
+        self.assertEqual('GTTAC', ors[0].upstream)
+        self.assertEqual(1, ors[0].start)
+
+    def test_get_all_orfs(self):
+        seq = Sequence('AATTAAAATAGA' + 'ATGGTGTGCTGC', False)
+        # 'GCAGCACACCAT' + 'TCTATTTTAATT'
+        rs, fs = seq.get_all_orfs(5), seq.get_reverse_complement().get_all_orfs(6)
+        self.assertEqual(4, len(rs))
+        self.assertEqual(1, len(fs))
+        
+        f = fs[0]
+        self.assertEqual('TAATTG',  f.downstream)
+        self.assertEqual('TTTTAA',  f.upstream)
+        self.assertEqual('TTGCA', f.bases[:5])
+        self.assertEqual((22, 19), (f.start, f.stop))
+        
+        myRs = set([(11, 20), (8, 20), (6, 15), (3, 15)])
+        self.assertEqual(myRs, set([(r.start, r.stop) for r in rs]))
+        
+    ### from Orf
+
+    def test_bases(self):
+        self.assertEqual('GCTAGCATCGAT',       self.for_norm.bases)
+        self.assertEqual('CTAGCATCGATCGAACTA', self.for_wrap.bases)
+        self.assertEqual('TAGCATCGA',          self.rev_norm.bases)
+        self.assertEqual('GATCGAGAGCTA',       self.rev_wrap.bases)
+        
+    def test_orf_upstream(self):
+        self.assertEqual('GATGA',   self.for_norm.upstream[-5:])
+        self.assertEqual('GCGAG',   self.for_wrap.upstream[-5:])
+        self.assertEqual('GATGAGC', self.rev_norm.upstream[-7:])
+        self.assertEqual('TC',      self.rev_wrap.upstream[-2:])
+        
+    def test_orf_downstream(self):
+        self.assertEqual('TCGATGA',       self.for_norm.downstream[:7])
+        self.assertEqual('GCG',           self.for_wrap.downstream[:3])
+        self.assertEqual('TCGAT',         self.rev_norm.downstream[:5])
+        self.assertEqual('GCATCGATCGAG',  self.rev_wrap.downstream[:12])
+    
+    def test_start_stop(self):
+        self.assertEqual((2, 14), (self.for_norm.start, self.for_norm.stop))
+        self.assertEqual((8, 3),  (self.for_wrap.start, self.for_wrap.stop))
+        self.assertEqual((13, 4), (self.rev_norm.start, self.rev_norm.stop))
+        self.assertEqual((5, 10), (self.rev_wrap.start, self.rev_wrap.stop))
         
 
 
-class OACollectionTest(unittest.TestCase):
+class OrfCollectionTest(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.oc = OrfCollection([
+            Orf(14, 27, 'ACGGGGTTTCCC', 'CCC', 'ATT', True),
+            Orf(21, 3, 'CGAGAATAG', 'GGG', '', False),
+            Orf(18, 900, 'ACGGGGTTTCCC', '', '', True),
+            Orf(45, 54, 'ACGGGGTTTCCC', '', '', False)
+        ])
+        
+    def test_get_orfs(self):
+        self.assertEqual(4, len(self.oc.get_orfs()))
     
-    def testOne(self):
-        self.assertFalse(True)
+    def test_filter(self):
+        c = self.oc.filter
+        cs = c(lambda o: o.start < 20), c(lambda o: o.bases == 'CGAGAATAG'), c(lambda o: o.is_sense)
+        self.assertEqual([2, 1, 2], map(lambda oc: len(oc.get_orfs()), cs))
+        
 
 
 
-testClasses = [OrfTest, SequenceTest, OrfAnalysisTest, OACollectionTest]
+testClasses = [OrfTest, SequenceTest, OrfCollectionTest]
