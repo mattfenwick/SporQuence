@@ -4,36 +4,36 @@ import unittest
 
 
 
-def findOrfs():
+def find_orfs(n):
     ''' () -> ([Orf], [Orf]) '''
     seq = model.Sequence(bs.bases, True)
-    return [seq.getOrfs(), seq.getReverseComplement().getOrfs()]
+    return [seq.get_orfs(n), seq.get_reverse_complement().get_orfs(n)]
 
 
-def findAllOrfs():
+def find_all_orfs(n):
     ''' () -> [Orf] '''
     seq = model.Sequence(bs.bases, True)
-    return seq.getAllOrfs() + seq.getReverseComplement().getAllOrfs()
+    return seq.get_all_orfs(n) + seq.get_reverse_complement().get_all_orfs(n)
     
 
 
-def filterByLength(orfs, low = 50, high = 80):
+def filter_by_length(orfs, low = 50, high = 80):
     return [orf for orf in orfs if low <= (len(orf.bases) / 3) <= high]
 
 
-def getMediumOrfs():
-    f, r = findOrfs()
+def get_medium_orfs(n):
+    f, r = find_orfs(n)
     
-    medFors = filterByLength(f)
-    medRevs = filterByLength(r)
+    med_Fors = filter_by_length(f)
+    med_Revs = filter_by_length(r)
     
-    return [medFors, medRevs]
+    return [med_Fors, med_Revs]
 
 
-def getAllMediumOrfs():
+def get_all_medium_orfs(n):
     '''() -> [Orf]'''
-    orfs = findAllOrfs()
-    return filterByLength(orfs)
+    orfs = find_all_orfs(n)
+    return filter_by_length(orfs)
 
 
 
@@ -47,18 +47,18 @@ class OrfFinderTest(unittest.TestCase):
         pass
 
     def testNumOrfs(self):
-        orfs = findOrfs()
+        orfs = find_orfs(5)
         self.assertEqual(189309, sum(map(len, orfs)))
 
     def testFilteredOrfs(self):
-        orfs = map(filterByLength, findOrfs())
+        orfs = map(filter_by_length, find_orfs(5))
         self.assertEqual(12220, sum(map(len, orfs)))
         
     def testNumAllOrfs(self):
-        orfs = findAllOrfs()
+        orfs = find_all_orfs(5)
         self.assertEqual(561841, len(orfs))
         
-        seq, rev = bs.bases, model.Sequence(bs.bases, True).getReverseComplement().getBases()
+        seq, rev = bs.bases, model.Sequence(bs.bases, True).get_reverse_complement().get_bases()
         starts = set(["ATG", "TTG", "CTG", "GTG"])
         
         i, j, ct = 0, 0, 0
@@ -81,7 +81,7 @@ class OrfFinderTest(unittest.TestCase):
         
 
     def testFilteredAllOrfs(self):
-        orfs = getAllMediumOrfs()
+        orfs = get_all_medium_orfs(5)
         self.assertEqual(42302, len(orfs))
         
 

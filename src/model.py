@@ -53,6 +53,17 @@ class Orf(object):
             'is_sense'    : self.is_sense
         }
         
+    @staticmethod
+    def from_JSON_object(obj):
+        return Orf(
+            obj['start'],
+            obj['stop'],
+            obj['bases'],
+            obj['upstream'],
+            obj['downstream'],
+            obj['is_sense']       
+        )
+        
     ##############################
 
     def get_codons(self):
@@ -215,6 +226,14 @@ class OrfTest(unittest.TestCase):
 
     def setUp(self):
         self.orf = Orf(2, 14, 'ACGCTACCTTTCGCC', 'TAATAA', 'CTCA', True)
+        self.obj = {
+            'start': 2, 
+            'stop': 14, 
+            'bases': 'ACGCTACCTTTCGCC', 
+            'upstream': 'TAATAA', 
+            'downstream': 'CTCA',
+            'is_sense': True
+        }
         
     def test_start(self):
         self.assertEqual(2, self.orf.start)
@@ -235,14 +254,16 @@ class OrfTest(unittest.TestCase):
         self.assertEqual(True, self.orf.is_sense)
         
     def test_to_JSON_object(self):
-        self.assertEqual({
-            'start': 2, 
-            'stop': 14, 
-            'bases': 'ACGCTACCTTTCGCC', 
-            'upstream': 'TAATAA', 
-            'downstream': 'CTCA',
-            'is_sense': True
-        }, self.orf.to_JSON_object())
+        self.assertEqual(self.obj, self.orf.to_JSON_object())
+        
+    def test_from_JSON_object(self):
+        self.assertEqual(self.obj['start'], self.orf.start)
+        self.assertEqual(self.obj['stop'], self.orf.stop)
+        self.assertEqual(self.obj['bases'], self.orf.bases)
+        self.assertEqual(self.obj['upstream'], self.orf.upstream)
+        self.assertEqual(self.obj['downstream'], self.orf.downstream)
+        self.assertEqual(self.obj['is_sense'], self.orf.is_sense)
+        
         
     ################
     # test 'questionable' methods
